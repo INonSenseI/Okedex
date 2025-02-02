@@ -1,0 +1,2 @@
+2025/02/02 12:05:06 Error occured while creating tables: dial tcp [::1]:5432: connectex: No connection could be made because the target machine actively refused it.
+2025/02/02 12:08:19 Database ready!

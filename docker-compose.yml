@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:latest
+    container_name: Okedex-db
+    environment:
+      POSTGRES_USER: Mario
+      POSTGRES_PASSWORD: 0
+      POSTGRES_DB: pokemon
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
