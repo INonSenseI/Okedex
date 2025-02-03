@@ -9,36 +9,34 @@ import (
 
 var db *sql.DB
 
-type Pokemon struct {
-	Name      string   `json:"name"`
-	Height    int      `json:"height"`
-	Weight    int      `json:"weight"`
-	Xp        int      `json:"base_experience"`
-	Abilities []string `json:"abilities"`
-}
-
+// Can panic
 func Init() error {
 	var err error
 	dsn := "host=localhost port=5432 user=Mario password=0 dbname=pokemon sslmode=disable"
 	db, err = sql.Open("postgres", dsn)
 	if err != nil {
-		log.Fatalf("Error connecting to the database: %v", err)
+		log.Printf("Error connecting to the database: %v", err)
+		return err
 	}
 
 	tables := []string{
+		/*`DROP TABLE pokemon`,*/
+		/*`DROP TABLE items`,*/
 		`CREATE TABLE IF NOT EXISTS pokemon (
-			id UUID PRIMARY KEY,
-			name TEXT,
-			xp INT,
-			weight INT,
-			height INT,
-			effects TEXT[]
-		)`}
+			name TEXT PRIMARY KEY,
+			count INT
+		)`,
+		`CREATE TABLE IF NOT EXISTS items (
+			name TEXT PRIMARY KEY,
+			count INT
+		)`,
+	}
 
 	for _, query := range tables {
 		_, err := db.Exec(query)
 		if err != nil {
-			log.Fatalf("Error occured while creating tables: %v", err)
+			log.Printf("Error occured while creating tables: %v", err)
+			return err
 		}
 	}
 
@@ -47,35 +45,77 @@ func Init() error {
 }
 
 func AddPokemon(name string) {
-	/*
-		var pokemon Pokemon
-		pokemon.Name = name
-
-		resp, err := http.Get("https://pokeapi.co/api/v2/pokemon/" + name)
-		if err != nil {
-			log.Fatalf("Error creating http request: %v", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			log.Fatalf("Unexpected status code: %d", resp.StatusCode)
-		}
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatalf("Error reading response: %v", err)
-		}
-
-		json.Unmarshal(body, &pokemon)
-	*/
 	query := `
-		INSERT INTO pokemon ()
+		INSERT INTO pokemon (name, count)
+		VALUES ($1, $2)
+		ON CONFLICT (name)
+		DO UPDATE SET count = pokemon.count + 1
 	`
-	db.Exec(query)
+	if _, err := db.Exec(query, name, 1); err != nil {
+		log.Printf("AddPokemon db query failed: %v", err)
+	}
 }
 
-func GetOwnedPokemon() []Pokemon {
-	return nil
+func GetOwnedPokemon() *map[string]int {
+	result := make(map[string]int)
+
+	query := `
+		SELECT name, count FROM pokemon
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Fatalf("GetOwnedPokemon failed to retrieve names from database: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+		var count int
+		if err := rows.Scan(&name, &count); err != nil {
+			log.Printf("GetOwnedPokemon failed to scan name from row: %v", err)
+		} else {
+			result[name] = count
+		}
+	}
+
+	return &result
+}
+
+func AddItem(name string) {
+	query := `
+	INSERT INTO items (name, count)
+	VALUES ($1, $2)
+	ON CONFLICT (name)
+	DO UPDATE SET count = items.count + 1
+`
+	if _, err := db.Exec(query, name, 1); err != nil {
+		log.Printf("AddItem db query failed: %v", err)
+	}
+}
+
+func GetOwnedItems() *map[string]int {
+	result := make(map[string]int)
+
+	query := `
+		SELECT name, count FROM items
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Fatalf("GetOwnedItems failed to retrieve names from database: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+		var count int
+		if err := rows.Scan(&name, &count); err != nil {
+			log.Printf("GetOwnedItems failed to scan name from row: %v", err)
+		} else {
+			result[name] = count
+		}
+	}
+
+	return &result
 }
 
 func Close() error {
